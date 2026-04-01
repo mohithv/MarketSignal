@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
   const backend =
     env.VITE_DEV_PROXY_TARGET ??
     process.env.VITE_DEV_PROXY_TARGET ??
-    'http://localhost:3000'
+    'https://marketsignal-2d8t.onrender.com/'
 
   return {
     plugins: [react()],
