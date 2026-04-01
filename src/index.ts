@@ -25,6 +25,23 @@ const limiter = rateLimit({
 });
 
 app.use(express.json({ limit: '1mb' }));
+
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    endpoints: {
+      health: 'GET /health',
+      analyze: 'POST /analyze',
+      sectorAnalysis: 'GET /sector-analysis',
+      trading: {
+        preOpen: 'GET /api/trading/pre-open',
+        topGainers: 'GET /api/trading/top-gainers',
+        candidates: 'GET /api/trading/candidates',
+      },
+    },
+  });
+});
+
 app.use("/api/",limiter);
 app.use("/api/",apiKeyAuth);
 app.use('/api/trading', tradingRouter);
