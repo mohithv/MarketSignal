@@ -34,7 +34,7 @@ function getClient(): ReturnType<typeof twilio> {
   return client;
 }
 
-export async function sendWhatsAppMessage(message: string): Promise<void> {
+export async function sendWhatsAppMessage(message: string) {
   const fromRaw = process.env.TWILIO_WHATSAPP_NUMBER;
   const toRaw = process.env.YOUR_PHONE;
 
@@ -47,9 +47,14 @@ export async function sendWhatsAppMessage(message: string): Promise<void> {
 
   const client = getClient();
 
-  await client.messages.create({
+  const response = await client.messages.create({
     body: message,
     from: asWhatsAppAddress(fromRaw),
     to: asWhatsAppAddress(toRaw),
   });
+
+  console.log("✅ Twilio SID:", response.sid);
+  console.log("📲 Status:", response.status);
+
+  return response; // 🔥 IMPORTANT
 }

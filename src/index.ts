@@ -46,14 +46,23 @@ app.get('/', (_req, res) => {
 });
 
 app.use("/api/",limiter);
-// app.use("/api/",apiKeyAuth);
-
-app.get('/api/alert-test', async (_req, res, next) => {
+app.get('/api/alert-test', async (_req, res) => {
   try {
-    await sendWhatsAppMessage('🚀 MarketSignal test alert');
-    res.status(200).json({ ok: true });
-  } catch (err) {
-    next(err);
+    const result = await sendWhatsAppMessage('🚀 MarketSignal test alert');
+
+    res.status(200).json({
+      ok: true,
+      sid: result.sid,
+      status: result.status
+    });
+
+  } catch (err: any) {
+    console.error("❌ Twilio error:", err);
+
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
   }
 });
 
