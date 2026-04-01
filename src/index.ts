@@ -48,7 +48,7 @@ app.get('/', (_req, res) => {
 app.use("/api/",limiter);
 // app.use("/api/",apiKeyAuth);
 
-app.post('/api/alert-test', async (_req, res, next) => {
+app.get('/api/alert-test', async (_req, res, next) => {
   try {
     await sendWhatsAppMessage('🚀 MarketSignal test alert');
     res.status(200).json({ ok: true });
