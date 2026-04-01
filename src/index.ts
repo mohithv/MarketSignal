@@ -6,6 +6,9 @@ import tradingRouter from './routes/tradingRoutes.js';
 import { errorHandler } from './middleware/errorMiddleware.js';
 import { rateLimit } from 'express-rate-limit';
 import { apiKeyAuth } from './middleware/authMiddleware.js';
+import { startScheduler } from './services/scheduler.js';
+import { sendWhatsAppMessage } from './clients/twilioClient.js';
+
 const app = express();
 
 app.use((req, res, next) => {
@@ -44,6 +47,16 @@ app.get('/', (_req, res) => {
 
 app.use("/api/",limiter);
 app.use("/api/",apiKeyAuth);
+
+app.post('/api/alert-test', async (_req, res, next) => {
+  try {
+    await sendWhatsAppMessage('🚀 MarketSignal test alert');
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.use('/api/trading', tradingRouter);
 app.use(analysisRouter);
 app.use(sectorRouter);
@@ -54,4 +67,5 @@ app.get('/health', (_req, res) => {
 
 app.listen(env.PORT, () => {
   console.log(`Server listening on port ${env.PORT}`);
+  startScheduler();
 });
