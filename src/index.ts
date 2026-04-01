@@ -4,7 +4,7 @@ import { analysisRouter } from './routes/analysisRoutes.js';
 import sectorRouter from './routes/sectorRoutes.js';
 import tradingRouter from './routes/tradingRoutes.js';
 import { errorHandler } from './middleware/errorMiddleware.js';
-import rateLimit from 'express-rate-limit';
+import { rateLimit } from 'express-rate-limit';
 import { apiKeyAuth } from './middleware/authMiddleware.js';
 const app = express();
 
