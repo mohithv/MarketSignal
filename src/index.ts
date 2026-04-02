@@ -8,7 +8,7 @@ import { rateLimit } from 'express-rate-limit';
 import { apiKeyAuth } from './middleware/authMiddleware.js';
 import { startScheduler } from './services/scheduler.js';
 import { sendWhatsAppMessage } from './clients/twilioClient.js';
-import connectDB from './config/db.js';
+// import connectDB from './config/db.js';
 import { getStockQuote } from './clients/finnhubClient.js';
 import { symbol } from 'zod';
 const app = express();
@@ -101,5 +101,5 @@ app.listen(env.PORT, () => {
   startScheduler();
 });
 
-connectDB();
+// connectDB();
 
