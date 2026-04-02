@@ -8,7 +8,8 @@ import { rateLimit } from 'express-rate-limit';
 import { apiKeyAuth } from './middleware/authMiddleware.js';
 import { startScheduler } from './services/scheduler.js';
 import { sendWhatsAppMessage } from './clients/twilioClient.js';
-
+import connectDB from './config/db.js';
+import { getStockQuote } from './clients/finnhubClient.js';
 const app = express();
 
 app.use((req, res, next) => {
@@ -66,6 +67,25 @@ app.get('/api/alert-test', async (_req, res) => {
   }
 });
 
+app.get('/api/live/:symbol', async (req, res) => {
+  try {
+    const {symbol} = req.params;
+    const data = await getStockQuote(symbol);
+    res.json({
+      symbol,
+      price: data.c,
+      change: data.d,
+      changePercent: data.dp
+    })
+  } catch (err: any) {
+    console.error("❌ Stock quote error:", err);
+    res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
+
 app.use('/api/trading', tradingRouter);
 app.use(analysisRouter);
 app.use(sectorRouter);
@@ -78,3 +98,6 @@ app.listen(env.PORT, () => {
   console.log(`Server listening on port ${env.PORT}`);
   startScheduler();
 });
+
+connectDB();
+
