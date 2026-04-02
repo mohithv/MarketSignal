@@ -8,6 +8,7 @@ import { rateLimit } from 'express-rate-limit';
 import { apiKeyAuth } from './middleware/authMiddleware.js';
 import { startScheduler } from './services/scheduler.js';
 import { sendWhatsAppMessage } from './clients/twilioClient.js';
+import { runWarAnalysis } from "./services/warService.js";
 // import connectDB from './config/db.js';
 import { getMarketNews } from './clients/finnhubClient.js';
 
@@ -151,6 +152,50 @@ ${s.name}: ${s.change !== null ? s.change.toFixed(2) : '-'}%
 
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// src/index.ts
+
+
+
+app.get("/api/war-alert", async (req, res) => {
+  try {
+    const result = await runWarAnalysis();
+
+    if (!result.isWar) {
+      return res.json({
+        ok: true,
+        message: "No war event detected",
+        score: result.score,
+      });
+    }
+
+    const message = `
+🚨 WAR IMPACT ALERT
+
+📈 Likely Gainers:
+${result.gainers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change?.toFixed(2) ?? "NA"}%`).join("\n")}
+
+📉 Likely Losers:
+${result.losers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change?.toFixed(2) ?? "NA"}%`).join("\n")}
+
+🧠 Reason:
+Geopolitical tension → Oil ↑ → Defense ↑ → IT/Bank ↓
+`;
+
+    await sendWhatsAppMessage(message);
+
+    res.json({
+      ok: true,
+      ...result,
+    });
+
+  } catch (err: any) {
+    res.status(500).json({
+      ok: false,
+      error: err.message,
+    });
   }
 });
 

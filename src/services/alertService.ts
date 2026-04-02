@@ -1,4 +1,4 @@
-import { TradingAlert, BreakoutResult } from '../types/trading.js';
+import { type AlertType, TradingAlert, BreakoutResult } from '../types/trading.js';
 import { sendWhatsAppMessage } from '../clients/twilioClient.js';
 
 export class AlertEngine {
@@ -23,12 +23,12 @@ export class AlertEngine {
       timestamp: new Date()
     };
 
-    this.alerts.push(alert);
+    this.storeAlert(alert);
     
     // Console alert (for now)
     console.log(`🔥 BREAKOUT ALERT: ${alert.symbol} at ₹${alert.price}`);
     console.log(`⏰ Time: ${alert.timestamp.toLocaleString('en-IN')}`);
-    console.log(`📊 Confidence: ${alert.confidence}%`);
+    console.log(`� Confidence: ${alert.confidence}%`);
     console.log('---');
     
     // TODO: Add WhatsApp integration here
@@ -53,7 +53,7 @@ export class AlertEngine {
       timestamp: new Date()
     };
 
-    this.alerts.push(alert);
+    this.storeAlert(alert);
     
     console.log(`📈 MOMENTUM ALERT: ${alert.symbol} +${change.toFixed(2)}% at ₹${price}`);
     console.log(`⏰ Time: ${alert.timestamp.toLocaleString('en-IN')}`);
@@ -73,6 +73,32 @@ export class AlertEngine {
     return this.alerts.filter(alert => alert.timestamp > cutoff);
   }
 
+  async sendCustomAlert(type: AlertType, message: string): Promise<void> {
+    console.log(`📢 Sending ${type} alert`);
+
+    if (this.canSendWhatsApp()) {
+      try {
+        await sendWhatsAppMessage(message);
+      } catch (err) {
+        console.error('Error sending WhatsApp:', err);
+      }
+    }
+
+    this.storeAlert({
+      type,
+      message,
+      timestamp: new Date()
+    });
+  }
+
+  private storeAlert(alert: TradingAlert): void {
+    this.alerts.push(alert);
+
+    if (this.alerts.length > 1000) {
+      this.alerts.shift();
+    }
+  }
+
   // Future WhatsApp integration
   private async sendWhatsAppAlert(alert: TradingAlert): Promise<void> {
     // TODO: Implement Twilio WhatsApp API
@@ -88,8 +114,13 @@ export class AlertEngine {
 
   private formatWhatsAppMessage(alert: TradingAlert): string {
     const emoji = alert.type === 'BREAKOUT' ? '🔥' : '📈';
-    return `${emoji} ${alert.type}: ${alert.symbol} at ₹${alert.price}`;
+    if (alert.message) return alert.message;
+    const symbol = alert.symbol ?? '';
+    const price = alert.price != null ? ` at ₹${alert.price}` : '';
+    return `${emoji} ${alert.type}: ${symbol}${price}`.trim();
   }
 }
+
+
 
 export const alertEngine = new AlertEngine();

@@ -3,6 +3,12 @@ import { getTopMovers } from '../clients/nseClient.js';
 import { filterCandidates, filterTopGainers } from './filterService.js';
 import { checkMultipleBreakouts } from './breakoutService.js';
 import { alertEngine } from './alertService.js';
+import { runWarAnalysis } from './warService.js';
+
+// 🔥 Anti-spam variables
+let lastWarAlertTime = 0;
+let lastWarScore = 0;
+const WAR_COOLDOWN = 60 * 60 * 1000; // 1 hour
 
 // Pre-market analysis (8:55 AM)
 cron.schedule('55 8 * * 1-5', async () => {
@@ -11,8 +17,6 @@ cron.schedule('55 8 * * 1-5', async () => {
   try {
     const movers = await getTopMovers();
     const candidates = filterCandidates(movers);
-    
-    console.log(`📊 Found ${candidates.length} potential candidates`);
     
     for (const candidate of candidates) {
       await alertEngine.sendMomentumAlert(
@@ -24,85 +28,107 @@ cron.schedule('55 8 * * 1-5', async () => {
   } catch (error) {
     console.error('Pre-market analysis failed:', error);
   }
-}, ({
-  scheduled: false, // Don't start immediately
+}, {
   timezone: 'Asia/Kolkata'
-} as any));
+});
 
-// Market hours breakout detection (every 2 minutes)
+// Breakout detection (every 2 min)
 cron.schedule('*/2 * * * 1-5', async () => {
   const now = new Date();
   const hour = now.getHours();
-  
-  // Only run during market hours (9:15 AM - 3:30 PM)
+
   if (hour < 9 || hour > 15 || (hour === 15 && now.getMinutes() > 30)) {
     return;
   }
-  
-  console.log('🔍 Scanning for breakouts...');
-  
+
   try {
     const movers = await getTopMovers();
     const topGainers = filterTopGainers(movers);
-    const symbols = topGainers.map(gainer => gainer.symbol);
-    
-    if (symbols.length === 0) {
-      console.log('No symbols to scan');
-      return;
-    }
-    
+    const symbols = topGainers.map(g => g.symbol);
+
+    if (!symbols.length) return;
+
     const breakouts = await checkMultipleBreakouts(symbols);
-    
-    if (breakouts.length > 0) {
-      console.log(`🚀 Found ${breakouts.length} breakouts!`);
-      
-      for (const breakout of breakouts) {
-        await alertEngine.sendBreakoutAlert(breakout);
-      }
-    } else {
-      console.log('No breakouts detected');
+
+    for (const breakout of breakouts) {
+      await alertEngine.sendBreakoutAlert(breakout);
     }
   } catch (error) {
     console.error('Breakout scan failed:', error);
   }
-}, ({
-  scheduled: false,
+}, {
   timezone: 'Asia/Kolkata'
-} as any));
+});
 
-// End-of-day summary (3:35 PM)
-cron.schedule('35 15 * * 1-5', async () => {
-  console.log('📊 Generating end-of-day summary...');
-  
-  const alerts = alertEngine.getRecentAlerts(6 * 60); // Last 6 hours
-  
-  console.log(`📈 Today's Summary:`);
-  console.log(`- Total Alerts: ${alerts.length}`);
-  console.log(`- Breakouts: ${alerts.filter(a => a.type === 'BREAKOUT').length}`);
-  console.log(`- Momentum: ${alerts.filter(a => a.type === 'MOMENTUM').length}`);
-  
-  const topPerformers = alerts
-    .filter(a => a.type === 'BREAKOUT')
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 3);
-    
-  if (topPerformers.length > 0) {
-    console.log('🏆 Top Performers:');
-    topPerformers.forEach(alert => {
-      console.log(`  ${alert.symbol}: ₹${alert.price} (${alert.confidence}% confidence)`);
-    });
+// 🌍 WAR detection (every 30 min)
+cron.schedule('*/30 * * * 1-5', async () => {
+  const now = new Date();
+  const hour = now.getHours();
+
+  if (hour < 9 || hour > 15 || (hour === 15 && now.getMinutes() > 30)) {
+    return;
   }
-}, ({
-  scheduled: false,
+
+  console.log('🌍 Checking war/news impact...');
+
+  try {
+    const result = await runWarAnalysis();
+
+    if (!result.isWar) return;
+
+    const currentTime = Date.now();
+
+    // 🔥 Anti-spam logic
+    if (
+      currentTime - lastWarAlertTime < WAR_COOLDOWN &&
+      result.score <= lastWarScore
+    ) {
+      console.log('⏳ Skipping duplicate WAR alert');
+      return;
+    }
+
+    const message = `
+🚨 WAR IMPACT ALERT
+
+📈 Gainers:
+${result.gainers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change?.toFixed(2) ?? "NA"}%`).join("\n")}
+
+📉 Losers:
+${result.losers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change?.toFixed(2) ?? "NA"}%`).join("\n")}
+
+🧠 Reason:
+Geopolitical tension → Oil ↑ → Defense ↑ → IT/Bank ↓
+`;
+
+    await alertEngine.sendCustomAlert("WAR", message);
+
+    lastWarAlertTime = currentTime;
+    lastWarScore = result.score;
+
+  } catch (error) {
+    console.error('War detection failed:', error);
+  }
+}, {
   timezone: 'Asia/Kolkata'
-} as any));
+});
+
+// End-of-day summary
+cron.schedule('35 15 * * 1-5', async () => {
+  console.log('📊 End-of-day summary');
+
+  const alerts = alertEngine.getRecentAlerts(6 * 60);
+
+  console.log(`Total Alerts: ${alerts.length}`);
+}, {
+  timezone: 'Asia/Kolkata'
+});
 
 export function startScheduler(): void {
-  console.log('🚀 Trading scheduler started...');
-  cron.getTasks().forEach((task: { start: () => void }) => task.start());
+  console.log('🚀 Scheduler started...');
+  cron.getTasks().forEach((task: any) => task.start());
 }
 
 export function stopScheduler(): void {
-  console.log('⏹️ Trading scheduler stopped...');
-  cron.getTasks().forEach((task: { stop: () => void }) => task.stop());
+  console.log('⏹️ Scheduler stopped...');
+  cron.getTasks().forEach((task: any) => task.stop());
 }

@@ -58,3 +58,4 @@ export async function sendWhatsAppMessage(message: string) {
 
   return response; // 🔥 IMPORTANT
 }
+

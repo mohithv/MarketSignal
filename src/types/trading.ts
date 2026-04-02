@@ -67,11 +67,19 @@ export interface BreakoutResult {
   timestamp: Date;
 }
 
+export type AlertType =
+  | 'BREAKOUT'
+  | 'VOLUME_SPIKE'
+  | 'MOMENTUM'
+  | 'WAR'
+  | 'CUSTOM';
+
 export interface TradingAlert {
-  type: 'BREAKOUT' | 'VOLUME_SPIKE' | 'MOMENTUM';
-  symbol: string;
-  price: number;
-  change: number;
-  confidence: number;
+  type: AlertType;
+  symbol?: string;
+  price?: number;
+  change?: number;
+  confidence?: number;
+  message?: string;
   timestamp: Date;
 }
