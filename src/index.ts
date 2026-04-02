@@ -9,7 +9,7 @@ import { apiKeyAuth } from './middleware/authMiddleware.js';
 import { startScheduler } from './services/scheduler.js';
 import { sendWhatsAppMessage } from './clients/twilioClient.js';
 // import connectDB from './config/db.js';
-import { getStockQuote } from './clients/finnhubClient.js';
+import { getMarketNews } from './clients/finnhubClient.js';
 const app = express();
 
 app.use((req, res, next) => {
@@ -67,21 +67,52 @@ app.get('/api/alert-test', async (_req, res) => {
   }
 });
 
-app.get('/api/live/:symbol', async (req, res) => {
+app.get('/api/news', async (req, res) => {
   try {
-    const { symbol } = req.params;
-    const data = await getStockQuote(symbol);
+    const news = await getMarketNews();
+    const topNews = news.slice(0, 3);
+
+    const stocks = [
+      { name: "TCS", symbol: "TCS.NS" },
+      { name: "INFY", symbol: "INFY.NS" },
+      { name: "RELIANCE", symbol: "RELIANCE.NS" },
+      { name: "ADANIPOWER", symbol: "ADANIPOWER.NS" },
+      { name: "HDFCBANK", symbol: "HDFCBANK.NS" },
+      { name: "ITC", symbol: "ITC.NS" },
+    ];
+
+    // ✅ define function BEFORE use
+    const mapNewsToStocks = (news: any[], stocks: any[]) => {
+      return news.map(article => {
+        const matched = stocks.find(stock =>
+          article.headline.toLowerCase().includes(stock.name.toLowerCase())
+        );
+
+        return {
+          headline: article.headline,
+          stock: matched ? matched.name : "General Market",
+        };
+      });
+    };
+
+    const mapped = mapNewsToStocks(topNews, stocks);
+
+    // ✅ use mapped data
+    const message = `
+📰 Smart Market News
+
+${mapped.map(n => `${n.stock}: ${n.headline}`).join("\n")}
+`;
+
+    await sendWhatsAppMessage(message);
 
     res.json({
       ok: true,
-      symbol,
-      price: data.c,
-      change: data.d,
-      changePercent: data.dp,
-      timestamp: data.t,
+      mapped,
     });
+
   } catch (err: any) {
-    console.error('❌ Finnhub quote error:', err);
+    console.error('❌ Finnhub news error:', err);
     res.status(500).json({
       ok: false,
       error: err?.message ?? 'Unknown error',

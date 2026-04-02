@@ -13,7 +13,7 @@ type FinnhubQuoteResponse = {
     t: number;
 };
 
-export const getStockQuote = async (symbol: string) => {
+export const getMarketNews = async () => {
 
     const apiKey = process.env.FINNHUB_API_KEY;
     if (!apiKey || apiKey.trim().length === 0) {
@@ -21,9 +21,9 @@ export const getStockQuote = async (symbol: string) => {
     }
 
     try {
-        const response = await axios.get<FinnhubQuoteResponse>(`${BASE_URL}/quote`, {
+        const response = await axios.get(`${BASE_URL}/news`, {
             params: {
-                symbol,
+                category: "general",
                 token: apiKey,
             },
         });
@@ -33,7 +33,7 @@ export const getStockQuote = async (symbol: string) => {
 
         if (response.data?.c === 0 && response.data?.t === 0) {
             throw new Error(
-                `Empty Finnhub quote for symbol '${symbol}'. This usually means an invalid symbol/exchange format (e.g. try AAPL, TSLA, or RELIANCE.NS) or no data.`
+                "Empty Finnhub response"
             );
         }
 
