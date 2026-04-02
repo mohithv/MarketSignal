@@ -10,6 +10,7 @@ import { startScheduler } from './services/scheduler.js';
 import { sendWhatsAppMessage } from './clients/twilioClient.js';
 import connectDB from './config/db.js';
 import { getStockQuote } from './clients/finnhubClient.js';
+import { symbol } from 'zod';
 const app = express();
 
 app.use((req, res, next) => {
@@ -68,22 +69,23 @@ app.get('/api/alert-test', async (_req, res) => {
 });
 
 app.get('/api/live/:symbol', async (req, res) => {
-  try {
-    const {symbol} = req.params;
-    const data = await getStockQuote(symbol);
-    res.json({
-      symbol,
-      price: data.c,
-      change: data.d,
-      changePercent: data.dp
-    })
-  } catch (err: any) {
-    console.error("❌ Stock quote error:", err);
-    res.status(500).json({
-      ok: false,
-      error: err.message
-    });
-  }
+  // try {
+  //   const {symbol} = req.params;
+  //   const data = await getStockQuote(symbol);
+  //   res.json({
+  //     symbol,
+  //     price: data.c,
+  //     change: data.d,
+  //     changePercent: data.dp
+  //   })
+  // } catch (err: any) {
+  //   console.error("❌ Stock quote error:", err);
+  //   res.status(500).json({
+  //     ok: false,
+  //     error: err.message
+  //   });
+  // }
+  res.json({ok: true, symbol: req.params.symbol})
 });
 
 app.use('/api/trading', tradingRouter);
