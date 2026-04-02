@@ -1,4 +1,6 @@
-import yahooFinance from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
+
+const yahooFinance = new YahooFinance();
 
 export type NewsArticle = {
   headline: string;
@@ -37,7 +39,7 @@ export function mapNewsToStocks(newsInput: NewsArticle[], stocksInput: StockInfo
     const matched = stocksInput.find(
       (stock: StockInfo) =>
         headlineLower.includes(stock.name.toLowerCase()) ||
-        stock.keywords.some((keyword: string) => headlineLower.includes(keyword.toLowerCase()))
+        stock.keywords.some((keyword: string) => headlineLower.includes(keyword))
     );
 
     return {
@@ -48,22 +50,25 @@ export function mapNewsToStocks(newsInput: NewsArticle[], stocksInput: StockInfo
 }
 
 export async function getPrices(stocksInput: StockInfo[]): Promise<PriceInfo[]> {
-  const results: PriceInfo[] = [];
+  const results = await Promise.all(
+    stocksInput.map(async (stock) => {
+      try {
+        const data = await yahooFinance.quote(stock.symbol);
 
-  for (const stock of stocksInput) {
-    type YahooQuote = {
-      regularMarketPrice?: number | null;
-      regularMarketChangePercent?: number | null;
-    };
-
-    const data = (await yahooFinance.quote(stock.symbol)) as unknown as YahooQuote;
-
-    results.push({
-      name: stock.name,
-      price: data.regularMarketPrice ?? null,
-      change: data.regularMarketChangePercent ?? null,
-    });
-  }
+        return {
+          name: stock.name,
+          price: data.regularMarketPrice ?? null,
+          change: data.regularMarketChangePercent ?? null,
+        };
+      } catch {
+        return {
+          name: stock.name,
+          price: null,
+          change: null,
+        };
+      }
+    })
+  );
 
   return results;
 }
