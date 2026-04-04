@@ -78,6 +78,26 @@ app.get('/api/alert-test', async (_req, res) => {
   }
 });
 
+app.post("/webhook/whatsapp", async (req, res) => {
+  const incomingMsg = req.body.Body;
+  const from = req.body.From;
+
+  console.log("📩 Incoming WhatsApp:", incomingMsg);
+
+  let reply = "Welcome to MarketSignal 🚀";
+
+  if (incomingMsg.toLowerCase() === "start") {
+    reply = "✅ You will now receive trading alerts!";
+  }
+
+  res.set("Content-Type", "text/xml");
+  res.send(`
+    <Response>
+      <Message>${reply}</Message>
+    </Response>
+  `);
+});
+
 app.get('/api/news', async (req, res) => {
   try {
     const news = await getMarketNews();
