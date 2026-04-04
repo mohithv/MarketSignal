@@ -199,6 +199,10 @@ Geopolitical tension → Oil ↑ → Defense ↑ → IT/Bank ↓
   }
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.use('/api/trading', tradingRouter);
 app.use(analysisRouter);
 app.use(sectorRouter);
