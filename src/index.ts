@@ -39,6 +39,7 @@ const limiter = rateLimit({
   max: 20, // limit each IP to 100 requests per windowMs
 });
 
+app.use(express.urlencoded({ extended: false }));
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/', (_req, res) => {
