@@ -115,6 +115,94 @@ body {
   font-weight: 500;
 }
 
+.carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.carousel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.carousel-title {
+  margin: 0;
+}
+
+.carousel-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.carousel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.carousel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.carousel-job {
+  margin: 0;
+  color: var(--heading);
+}
+
+.kv {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.kv-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.kv-key {
+  color: var(--text-dim);
+}
+
+.kv-val {
+  color: var(--text);
+}
+
+.card.inset {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.run-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--text);
+}
+
+.run-list li {
+  margin: 0.2rem 0;
+  color: var(--text-dim);
+}
+
 .main {
   display: flex;
   flex-direction: column;

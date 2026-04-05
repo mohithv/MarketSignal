@@ -1,4 +1,5 @@
 import type { AnalyzeResponse, SectorAnalysisResponse } from './types'
+import type { CronTimelineResponse } from './types'
 
 const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -42,4 +43,11 @@ export async function getSectorAnalysis(): Promise<SectorAnalysisResponse> {
   const res = await fetch(url, { headers: authHeaders() })
   if (!res.ok) throw new Error(await parseError(res))
   return res.json() as Promise<SectorAnalysisResponse>
+}
+
+export async function getCronTimeline(): Promise<CronTimelineResponse> {
+  const url = `${base}/api/cron-timeline`
+  const res = await fetch(url, { headers: authHeaders() })
+  if (!res.ok) throw new Error(await parseError(res))
+  return res.json() as Promise<CronTimelineResponse>
 }

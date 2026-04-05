@@ -33,3 +33,18 @@ export type SectorAnalysisResponse = {
   topSector: SectorRank | undefined
   allSectors: SectorRank[]
 }
+
+export type CronJobTimeline = {
+  id: string
+  name: string
+  expression: string
+  timezone: string
+  notes: string
+  nextRuns: string[]
+}
+
+export type CronTimelineResponse = {
+  ok: boolean
+  now: string
+  jobs: CronJobTimeline[]
+}

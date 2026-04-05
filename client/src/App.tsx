@@ -1,10 +1,15 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { getSectorAnalysis, postAnalyze } from './api'
-import type { AnalyzeResponse, SectorAnalysisResponse, ScreenerResult } from './types'
+import { getCronTimeline, getSectorAnalysis, postAnalyze } from './api'
+import type {
+  AnalyzeResponse,
+  CronTimelineResponse,
+  SectorAnalysisResponse,
+  ScreenerResult,
+} from './types'
 import { TradingDashboard } from './components/TradingDashboard'
 
-type Tab = 'trading' | 'screener' | 'sectors'
+type Tab = 'trading' | 'screener' | 'sectors' | 'cron'
 
 /** Sensible starter screen — user can edit or clear any field. */
 const DEFAULT_FILTERS = {
@@ -15,6 +20,91 @@ const DEFAULT_FILTERS = {
   industry: '',
   signal: '',
   limit: '25',
+}
+
+function CronTimelineView({ data }: { data: CronTimelineResponse }) {
+  const [idx, setIdx] = useState(0)
+
+  const jobs = data.jobs ?? []
+  const job = jobs[idx]
+
+  useEffect(() => {
+    if (idx < 0) setIdx(0)
+    if (idx > Math.max(0, jobs.length - 1)) setIdx(Math.max(0, jobs.length - 1))
+  }, [idx, jobs.length])
+
+  if (jobs.length === 0) {
+    return <p className="muted">No cron jobs found.</p>
+  }
+
+  return (
+    <section className="card block">
+      <div className="carousel">
+        <div className="carousel-header">
+          <div>
+            <h2 className="carousel-title">Cron timeline</h2>
+            <p className="muted small">
+              Server time: <span className="mono">{data.now}</span>
+            </p>
+          </div>
+
+          <div className="carousel-controls">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setIdx((v) => Math.max(0, v - 1))}
+              disabled={idx === 0}
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setIdx((v) => Math.min(jobs.length - 1, v + 1))}
+              disabled={idx === jobs.length - 1}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+
+        <div className="carousel-body">
+          <div className="carousel-meta">
+            <div className="pill">
+              <span className="muted">{idx + 1}</span>
+              <span className="muted">/</span>
+              <span className="muted">{jobs.length}</span>
+            </div>
+            <div className="pill mono">{job.id}</div>
+          </div>
+
+          <h3 className="carousel-job">{job.name}</h3>
+          <div className="kv">
+            <div className="kv-row">
+              <span className="kv-key">Expression</span>
+              <span className="kv-val mono">{job.expression}</span>
+            </div>
+            <div className="kv-row">
+              <span className="kv-key">Timezone</span>
+              <span className="kv-val mono">{job.timezone}</span>
+            </div>
+          </div>
+          <p className="muted">{job.notes}</p>
+
+          <div className="card inset">
+            <h4>Next runs</h4>
+            <ul className="run-list">
+              {job.nextRuns.map((t) => (
+                <li key={t} className="mono">
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
 }
 
 function fmtCompact(n: number | undefined): string {
@@ -149,6 +239,10 @@ export default function App() {
     null,
   )
 
+  const [cronLoading, setCronLoading] = useState(false)
+  const [cronError, setCronError] = useState<string | null>(null)
+  const [cronData, setCronData] = useState<CronTimelineResponse | null>(null)
+
   const parseNum = (s: string): number | undefined => {
     const t = s.trim()
     if (t === '') return undefined
@@ -219,6 +313,19 @@ export default function App() {
     }
   }, [])
 
+  const runCronTimeline = useCallback(async () => {
+    setCronError(null)
+    setCronLoading(true)
+    try {
+      const out = await getCronTimeline()
+      setCronData(out)
+    } catch (e) {
+      setCronError(e instanceof Error ? e.message : 'Something went wrong')
+    } finally {
+      setCronLoading(false)
+    }
+  }, [])
+
   return (
     <div className="app">
       <header className="header">
@@ -251,12 +358,42 @@ export default function App() {
           >
             Sector sentiment
           </button>
+          <button
+            type="button"
+            className={tab === 'cron' ? 'tab active' : 'tab'}
+            onClick={() => setTab('cron')}
+          >
+            Cron timeline
+          </button>
         </nav>
       </header>
 
       {tab === 'trading' && (
         <main className="main">
           <TradingDashboard apiKey={import.meta.env.VITE_API_KEY ?? ''} />
+        </main>
+      )}
+
+      {tab === 'cron' && (
+        <main className="main">
+          <div className="actions">
+            <button
+              type="button"
+              className="btn primary"
+              disabled={cronLoading}
+              onClick={() => void runCronTimeline()}
+            >
+              {cronLoading ? 'Loading…' : 'Load cron timeline'}
+            </button>
+          </div>
+
+          {cronError && <div className="banner error">{cronError}</div>}
+          {cronData && <CronTimelineView data={cronData} />}
+          {!cronData && !cronLoading && !cronError && (
+            <p className="muted center">
+              Shows cron schedules + upcoming fire times from the backend.
+            </p>
+          )}
         </main>
       )}
 

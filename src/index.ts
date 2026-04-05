@@ -7,6 +7,7 @@ import { errorHandler } from './middleware/errorMiddleware.js';
 import { rateLimit } from 'express-rate-limit';
 import { apiKeyAuth } from './middleware/authMiddleware.js';
 import { startScheduler } from './services/scheduler.js';
+import { getCronTimeline } from './services/scheduler.js';
 import { sendWhatsAppMessage } from './clients/twilioClient.js';
 import { runWarAnalysis } from "./services/warService.js";
 // import connectDB from './config/db.js';
@@ -65,6 +66,14 @@ app.get('/', (_req, res) => {
 });
 
 app.use("/api/",limiter);
+app.get('/api/cron-timeline', (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    now: new Date().toISOString(),
+    jobs: getCronTimeline({ countPerJob: 10 }),
+  });
+});
+
 app.get('/api/alert-test', async (_req, res) => {
   try {
     const result = await sendWhatsAppMessage('🚀 MarketSignal test alert');

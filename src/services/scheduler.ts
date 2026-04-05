@@ -7,6 +7,120 @@ import { alertEngine } from './alertService.js';
 import { runWarAnalysis } from './warService.js';
 import { mapNewsToStocks, STOCKS, type MappedNews, type NewsArticle } from './newsStockMapper.js';
 
+export type CronJobTimeline = {
+  id: string;
+  name: string;
+  expression: string;
+  timezone: string;
+  notes: string;
+  nextRuns: string[];
+};
+
+export const CRON_JOBS = [
+  {
+    id: 'news_alerts',
+    name: 'News alerts',
+    expression: '* * * * 1-5',
+    timezone: 'Asia/Kolkata',
+    notes: 'Sends WhatsApp news summary every minute on weekdays.',
+  },
+  {
+    id: 'pre_market',
+    name: 'Pre-market analysis',
+    expression: '55 8 * * 1-5',
+    timezone: 'Asia/Kolkata',
+    notes: 'Runs at 08:55 on weekdays.',
+  },
+  {
+    id: 'breakout_scan',
+    name: 'Breakout scan',
+    expression: '* * * * 1-5',
+    timezone: 'Asia/Kolkata',
+    notes: 'Runs every minute on weekdays; returns early outside 09:00–15:30.',
+  },
+  {
+    id: 'war_detection',
+    name: 'WAR detection',
+    expression: '* * * * 1-5',
+    timezone: 'Asia/Kolkata',
+    notes: 'Runs every minute on weekdays; returns early outside 09:00–15:30 and has anti-spam cooldown.',
+  },
+  {
+    id: 'eod_summary',
+    name: 'End-of-day summary',
+    expression: '35 15 * * 1-5',
+    timezone: 'Asia/Kolkata',
+    notes: 'Runs at 15:35 on weekdays.',
+  },
+] as const;
+
+function matchesField(value: number, field: string): boolean {
+  if (field === '*') return true;
+  const step = field.match(/^\*\/(\d+)$/);
+  if (step) {
+    const n = Number(step[1]);
+    return Number.isFinite(n) && n > 0 ? value % n === 0 : false;
+  }
+  const range = field.match(/^(\d+)-(\d+)$/);
+  if (range) {
+    const a = Number(range[1]);
+    const b = Number(range[2]);
+    return value >= a && value <= b;
+  }
+  const num = Number(field);
+  return Number.isFinite(num) ? value === num : false;
+}
+
+function matchesCron(date: Date, expression: string): boolean {
+  const parts = expression.trim().split(/\s+/);
+  if (parts.length !== 5) return false;
+  const [minF, hourF, domF, monF, dowF] = parts as [string, string, string, string, string];
+
+  const minute = date.getMinutes();
+  const hour = date.getHours();
+  const dom = date.getDate();
+  const mon = date.getMonth() + 1;
+  const dow = date.getDay();
+  const cronDow = dow === 0 ? 0 : dow;
+
+  return (
+    matchesField(minute, minF) &&
+    matchesField(hour, hourF) &&
+    matchesField(dom, domF) &&
+    matchesField(mon, monF) &&
+    matchesField(cronDow, dowF)
+  );
+}
+
+export function getCronTimeline(options?: {
+  now?: Date;
+  countPerJob?: number;
+  lookaheadMinutes?: number;
+}): CronJobTimeline[] {
+  const now = options?.now ?? new Date();
+  const countPerJob = options?.countPerJob ?? 8;
+  const lookaheadMinutes = options?.lookaheadMinutes ?? 7 * 24 * 60;
+
+  return CRON_JOBS.map((job) => {
+    const nextRuns: string[] = [];
+    const cursor = new Date(now.getTime());
+    cursor.setSeconds(0, 0);
+    cursor.setMinutes(cursor.getMinutes() + 1);
+
+    for (let i = 0; i < lookaheadMinutes && nextRuns.length < countPerJob; i += 1) {
+      if (matchesCron(cursor, job.expression)) {
+        nextRuns.push(cursor.toISOString());
+      }
+      cursor.setMinutes(cursor.getMinutes() + 1);
+    }
+
+    return {
+      ...job,
+      nextRuns,
+    };
+  });
+}
+
 // 🔥 Anti-spam variables
 let lastWarAlertTime = 0;
 let lastWarScore = 0;
