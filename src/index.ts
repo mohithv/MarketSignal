@@ -46,7 +46,13 @@ app.get('/', (_req, res) => {
   res.status(200).json({
     ok: true,
     endpoints: {
+      root: 'GET /',
       health: 'GET /health',
+      alertTest: 'GET /api/alert-test',
+      news: 'GET /api/news',
+      smartAlert: 'GET /api/smart-alert',
+      warAlert: 'GET /api/war-alert',
+      whatsappWebhook: 'POST /webhook/whatsapp',
       analyze: 'POST /analyze',
       sectorAnalysis: 'GET /sector-analysis',
       trading: {
@@ -160,7 +166,7 @@ app.get("/api/smart-alert", async (req, res) => {
 ${insights
   .map(
     (s: PriceInfo & { reason: string }) => `
-${s.name}: ${s.change !== null ? s.change.toFixed(2) : '-'}%
+${s.name}: ${s.change !== null ? `${s.change >= 0 ? '🟢⬆️' : '🔴⬇️'} ${s.change.toFixed(2)}%` : '-'}
 📰 ${s.reason}
 `
   )
@@ -196,10 +202,10 @@ app.get("/api/war-alert", async (req, res) => {
 🚨 WAR IMPACT ALERT
 
 📈 Likely Gainers:
-${result.gainers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change?.toFixed(2) ?? "NA"}%`).join("\n")}
+${result.gainers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change !== null ? `${s.change >= 0 ? '🟢⬆️' : '🔴⬇️'} ${s.change.toFixed(2)}%` : "NA"}`).join("\n")}
 
 📉 Likely Losers:
-${result.losers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change?.toFixed(2) ?? "NA"}%`).join("\n")}
+${result.losers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change !== null ? `${s.change >= 0 ? '🟢⬆️' : '🔴⬇️'} ${s.change.toFixed(2)}%` : "NA"}`).join("\n")}
 
 🧠 Reason:
 Geopolitical tension → Oil ↑ → Defense ↑ → IT/Bank ↓

@@ -1,14 +1,38 @@
 import cron from 'node-cron';
 import { getTopMovers } from '../clients/nseClient.js';
+import { getMarketNews } from '../clients/finnhubClient.js';
 import { filterCandidates, filterTopGainers } from './filterService.js';
 import { checkMultipleBreakouts } from './breakoutService.js';
 import { alertEngine } from './alertService.js';
 import { runWarAnalysis } from './warService.js';
+import { mapNewsToStocks, STOCKS, type MappedNews, type NewsArticle } from './newsStockMapper.js';
 
 // 🔥 Anti-spam variables
 let lastWarAlertTime = 0;
 let lastWarScore = 0;
 const WAR_COOLDOWN = 60 * 60 * 1000; // 1 hour
+
+// 📰 News alerts (every 1 min)
+cron.schedule('* * * * 1-5', async () => {
+  try {
+    const news = await getMarketNews();
+    const topNews: NewsArticle[] = (news as NewsArticle[]).slice(0, 3);
+
+    const mapped = mapNewsToStocks(topNews, STOCKS);
+
+    const message = `
+📰 Smart Market News
+
+${mapped.map((n: MappedNews) => `${n.stock}: ${n.headline}`).join("\n")}
+`;
+
+    await alertEngine.sendCustomAlert('CUSTOM', message);
+  } catch (error) {
+    console.error('News alert failed:', error);
+  }
+}, {
+  timezone: 'Asia/Kolkata'
+});
 
 // Pre-market analysis (8:55 AM)
 cron.schedule('55 8 * * 1-5', async () => {
@@ -91,10 +115,10 @@ cron.schedule('* * * * 1-5', async () => {
 🚨 WAR IMPACT ALERT
 
 📈 Gainers:
-${result.gainers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change?.toFixed(2) ?? "NA"}%`).join("\n")}
+${result.gainers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change !== null ? `${s.change >= 0 ? '🟢⬆️' : '🔴⬇️'} ${s.change.toFixed(2)}%` : "NA"}`).join("\n")}
 
 📉 Losers:
-${result.losers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change?.toFixed(2) ?? "NA"}%`).join("\n")}
+${result.losers.map((s: { name: string; change: number | null }) => `${s.name}: ${s.change !== null ? `${s.change >= 0 ? '🟢⬆️' : '🔴⬇️'} ${s.change.toFixed(2)}%` : "NA"}`).join("\n")}
 
 🧠 Reason:
 Geopolitical tension → Oil ↑ → Defense ↑ → IT/Bank ↓
