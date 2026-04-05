@@ -95,15 +95,56 @@ app.get('/api/alert-test', async (_req, res) => {
 });
 
 app.post("/webhook/whatsapp", async (req, res) => {
-  const incomingMsg = req.body.Body;
+  const incomingMsg = req.body.Body?.toLowerCase();
   const from = req.body.From;
 
   console.log("📩 Incoming WhatsApp:", incomingMsg);
 
   let reply = "Welcome to MarketSignal 🚀";
 
-  if (incomingMsg.toLowerCase() === "start") {
-    reply = "✅ You will now receive trading alerts!";
+  if (incomingMsg === "start" || incomingMsg === "hi") {
+    try {
+      // 🔥 1. Fetch news
+      const news = await getMarketNews();
+      const topNews = news.slice(0, 3);
+
+      const mapped = mapNewsToStocks(topNews, STOCKS);
+
+      // 🔥 2. Smart insights
+      const prices = await getPrices(STOCKS);
+
+      const insights = prices.map((stock) => {
+        const related = mapped.find(n => n.stock === stock.name);
+
+        return {
+          ...stock,
+          reason: related ? related.headline : "No major news",
+        };
+      });
+
+      // 🔥 3. War analysis
+      const war = await runWarAnalysis();
+
+      // 🔥 4. Build response
+      reply = `
+🚀 MarketSignal Activated
+
+📊 Smart Insights:
+${insights.map(s => `${s.name}: ${s.change ?? "NA"}%`).join("\n")}
+
+📰 News:
+${mapped.map(n => `${n.stock}: ${n.headline}`).join("\n")}
+
+🌍 War Status:
+${war.isWar ? "⚠️ Market impacted by global tensions" : "✅ No major war impact"}
+
+✅ Alerts started successfully!
+`;
+
+    } catch (err) {
+      console.error("Webhook error:", err);
+      reply = "❌ Failed to fetch market data";
+    }
   }
 
   res.set("Content-Type", "text/xml");
