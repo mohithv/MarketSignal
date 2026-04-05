@@ -33,7 +33,7 @@ cron.schedule('55 8 * * 1-5', async () => {
 });
 
 // Breakout detection (every 2 min)
-cron.schedule('*/2 * * * 1-5', async () => {
+cron.schedule('* * * * 1-5', async () => {
   const now = new Date();
   const hour = now.getHours();
 
@@ -61,7 +61,7 @@ cron.schedule('*/2 * * * 1-5', async () => {
 });
 
 // 🌍 WAR detection (every 30 min)
-cron.schedule('*/30 * * * 1-5', async () => {
+cron.schedule('* * * * 1-5', async () => {
   const now = new Date();
   const hour = now.getHours();
 
