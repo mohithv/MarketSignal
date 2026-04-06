@@ -39,14 +39,19 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '1mb' }));
 
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 20, // limit each IP to 100 requests per windowMs
 });
 
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json({ limit: '1mb' }));
+
+app.use("/api/", (req, res, next) => {
+  if (req.method === "OPTIONS") return next();
+  return limiter(req, res, next);
+});
 
 app.get('/', (_req, res) => {
   res.status(200).json({
@@ -68,7 +73,7 @@ app.get('/', (_req, res) => {
   });
 });
 
-app.use("/api/",limiter);
+
 app.get('/api/cron-timeline', (_req, res) => {
   res.status(200).json({
     ok: true,
