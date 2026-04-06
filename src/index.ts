@@ -15,16 +15,29 @@ import cors from 'cors';
 const app = express();
 
 app.use(cors({
-  origin: [
-    "https://market-signal-cmhb.vercel.app", // ✅ no trailing slash
-    "http://localhost:3000"
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    if (
+      origin.includes("vercel.app") ||
+      origin.includes("localhost")
+    ) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
   credentials: true
 }));
 
-app.options('*', cors());
+app.use((req, res, next) => {
+  console.log("Origin:", req.headers.origin);
+  next();
+});
+
+app.options("*", cors());
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 20, // limit each IP to 100 requests per windowMs
