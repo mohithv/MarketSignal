@@ -50,9 +50,12 @@ export function TradingDashboard({ apiKey }: TradingDashboardProps) {
   }, [preOpenData])
 
   const baseUrl = useMemo(
-    () =>
-      (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '') ||
-      window.location.origin,
+    () => {
+      const fromEnv = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+      if (fromEnv) return fromEnv
+      if (import.meta.env.DEV) return window.location.origin
+      return ''
+    },
     [],
   )
 
@@ -65,6 +68,9 @@ export function TradingDashboard({ apiKey }: TradingDashboardProps) {
     setLoading(true)
     setError(null)
     try {
+      if (!baseUrl) {
+        throw new Error('Missing VITE_API_URL. Set it in Vercel project settings and redeploy.')
+      }
       const [preOpenRes, gainersRes, candidatesRes] = await Promise.all([
         fetch(`${baseUrl}/api/trading/pre-open`, { headers }),
         fetch(`${baseUrl}/api/trading/top-gainers`, { headers }),
