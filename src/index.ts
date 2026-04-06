@@ -10,42 +10,21 @@ import { startScheduler } from './services/scheduler.js';
 import { getCronTimeline } from './services/scheduler.js';
 import { sendWhatsAppMessage } from './clients/twilioClient.js';
 import { runWarAnalysis } from "./services/warService.js";
+import cors from 'cors';
 // import connectDB from './config/db.js';
 const app = express();
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
+app.use(cors({
+  origin: [
+    "https://market-signal-cmhb.vercel.app", // ✅ no trailing slash
+    "http://localhost:3000"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
+  credentials: true
+}));
 
-  const allowedOrigins = new Set([
-    'https://market-signal-cmhb.vercel.app/',
-    'http://localhost:3000',
-  ]);
-
-  if (!origin) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  } else if (allowedOrigins.has(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-
-  res.setHeader(
-    'Access-Control-Allow-Methods',
-    'GET, POST, PUT, DELETE, OPTIONS'
-  );
-
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, x-api-key'
-  );
-
-  res.setHeader('Vary', 'Origin');
-
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
-
+app.options('*', cors());
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 20, // limit each IP to 100 requests per windowMs
