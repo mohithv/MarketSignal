@@ -21,6 +21,13 @@ export type PriceInfo = {
   change: number | null;
 };
 
+// 🔥 Add proper type for Yahoo response
+type YahooQuote = {
+  symbol?: string;
+  regularMarketPrice?: number;
+  regularMarketChangePercent?: number;
+};
+
 export const STOCKS: StockInfo[] = [
   { name: 'TCS', symbol: 'TCS.NS', keywords: ['tcs', 'tata consultancy'] },
   { name: 'INFY', symbol: 'INFY.NS', keywords: ['infosys', 'infy'] },
@@ -30,14 +37,19 @@ export const STOCKS: StockInfo[] = [
   { name: 'ITC', symbol: 'ITC.NS', keywords: ['itc'] },
 ];
 
-export function mapNewsToStocks(newsInput: NewsArticle[], stocksInput: StockInfo[]): MappedNews[] {
-  return newsInput.map((article: NewsArticle) => {
+export function mapNewsToStocks(
+  newsInput: NewsArticle[],
+  stocksInput: StockInfo[]
+): MappedNews[] {
+  return newsInput.map((article) => {
     const headlineLower = article.headline.toLowerCase();
 
     const matched = stocksInput.find(
-      (stock: StockInfo) =>
+      (stock) =>
         headlineLower.includes(stock.name.toLowerCase()) ||
-        stock.keywords.some((keyword: string) => headlineLower.includes(keyword))
+        stock.keywords.some((keyword) =>
+          headlineLower.includes(keyword)
+        )
     );
 
     return {
@@ -47,13 +59,28 @@ export function mapNewsToStocks(newsInput: NewsArticle[], stocksInput: StockInfo
   });
 }
 
-export async function getPrices(stocksInput: StockInfo[]): Promise<PriceInfo[]> {
+// 🔥 FIXED getPrices
+export async function getPrices(
+  stocksInput: StockInfo[]
+): Promise<PriceInfo[]> {
   try {
     const symbols = stocksInput.map((s) => s.symbol);
-    const data = await quoteBatch(symbols);
+
+    const rawData = await quoteBatch(symbols);
+
+    // 🔥 Handle BOTH array & object response
+    let data: YahooQuote[];
+
+    if (Array.isArray(rawData)) {
+      data = rawData;
+    } else {
+      // yahoo-finance2 sometimes returns object keyed by symbol
+      data = symbols.map((sym) => rawData[sym]);
+    }
 
     return stocksInput.map((stock, index) => {
       const q = data[index];
+
       return {
         name: stock.name,
         price: q?.regularMarketPrice ?? null,
@@ -62,6 +89,7 @@ export async function getPrices(stocksInput: StockInfo[]): Promise<PriceInfo[]> 
     });
   } catch (error) {
     console.error('Batch fetch error:', error);
+
     return stocksInput.map((stock) => ({
       name: stock.name,
       price: null,
