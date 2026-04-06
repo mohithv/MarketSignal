@@ -1,7 +1,19 @@
-import Groq from 'groq-sdk';
 import { env } from '../config/env.js';
 
-const client = new Groq({ apiKey: env.GROQ_API_KEY });
+let groqInstance: any = null;
+
+export async function getGroqClient() {
+  if (!groqInstance) {
+    const mod = await import('groq-sdk');
+    const Groq = mod.default as any;
+
+    groqInstance = new Groq({
+      apiKey: env.GROQ_API_KEY ?? process.env.GROQ_API_KEY,
+    });
+  }
+
+  return groqInstance;
+}
 
 const SYSTEM_PROMPT =
   'You are a financial analysis assistant that explains screening results clearly for a retail investor. You summarize key metrics, highlight interesting stocks, and mention major risks. Do not give personal investment advice or guarantees.';
@@ -13,6 +25,7 @@ const FALLBACK_MODELS = [
 ];
 
 export async function analyzeWithGroq(prompt: string): Promise<string> {
+  const client = await getGroqClient();
   const candidates = [env.GROQ_MODEL, ...FALLBACK_MODELS].filter(
     (model, idx, arr) => model && arr.indexOf(model) === idx
   );
