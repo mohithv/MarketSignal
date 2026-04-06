@@ -1,9 +1,19 @@
-import YahooFinance from 'yahoo-finance2';
-
-const yahooFinance = new YahooFinance();
-
 export type NewsArticle = {
   headline: string;
+};
+
+let yahooFinancePromise: Promise<typeof import('yahoo-finance2').default> | null = null;
+
+async function getYahooFinance() {
+  if (!yahooFinancePromise) {
+    yahooFinancePromise = import('yahoo-finance2').then((m) => m.default);
+  }
+  return yahooFinancePromise;
+}
+
+type YahooQuote = {
+  regularMarketPrice?: number;
+  regularMarketChangePercent?: number;
 };
 
 export type StockInfo = {
@@ -53,6 +63,7 @@ export async function getPrices(stocksInput: StockInfo[]): Promise<PriceInfo[]> 
   const results = await Promise.all(
     stocksInput.map(async (stock) => {
       try {
+        const yahooFinance = (await getYahooFinance()) as unknown as { quote: (s: string) => Promise<YahooQuote> };
         const data = await yahooFinance.quote(stock.symbol);
 
         return {
