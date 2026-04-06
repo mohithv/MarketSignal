@@ -15,23 +15,34 @@ const app = express();
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+
   const allowedOrigins = new Set([
-    'https://marketsignal-2d8t.onrender.com',
+    'https://market-signal-cmhb.vercel.app/',
+    'http://localhost:3000',
   ]);
 
   if (!origin) {
-    // Non-browser requests (curl, server-to-server) won't send an Origin header.
     res.setHeader('Access-Control-Allow-Origin', '*');
   } else if (allowedOrigins.has(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, DELETE, OPTIONS'
+  );
+
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, x-api-key'
+  );
+
   res.setHeader('Vary', 'Origin');
+
   if (req.method === 'OPTIONS') {
-    res.sendStatus(204);
-    return;
+    return res.sendStatus(204);
   }
+
   next();
 });
 
