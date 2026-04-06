@@ -26,13 +26,21 @@ export async function getNSEQuote(symbol: string) {
     });
   
   const data = (await res.json()) as NSEQuoteResponse;
+
+  const price = data.priceInfo?.lastPrice;
+  const open = data.priceInfo?.open;
+  const change =
+    typeof price === 'number' && typeof open === 'number' && open !== 0
+      ? ((price - open) / open) * 100
+      : undefined;
   
     return {
-    price: data.priceInfo?.lastPrice,
-    open: data.priceInfo?.open,
+    price,
+    open,
     high: data.priceInfo?.intraDayHighLow?.max,
     low: data.priceInfo?.intraDayHighLow?.min,
-    volume: data.securityWiseDP?.deliveryQuantity
+    volume: data.securityWiseDP?.deliveryQuantity,
+    change,
     };
   }
 

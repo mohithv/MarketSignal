@@ -1,6 +1,5 @@
 import cron from 'node-cron';
 import { getTopMovers } from '../clients/nseClient.js';
-import { getMarketNews } from '../clients/finnhubClient.js';
 import { filterCandidates, filterTopGainers } from './filterService.js';
 import { checkMultipleBreakouts } from './breakoutService.js';
 import { alertEngine } from './alertService.js';
@@ -125,28 +124,6 @@ export function getCronTimeline(options?: {
 let lastWarAlertTime = 0;
 let lastWarScore = 0;
 const WAR_COOLDOWN = 60 * 60 * 1000; // 1 hour
-
-// 📰 News alerts (every 1 min)
-cron.schedule('* * * * 1-5', async () => {
-  try {
-    const news = await getMarketNews();
-    const topNews: NewsArticle[] = (news as NewsArticle[]).slice(0, 3);
-
-    const mapped = mapNewsToStocks(topNews, STOCKS);
-
-    const message = `
-📰 Smart Market News
-
-${mapped.map((n: MappedNews) => `${n.stock}: ${n.headline}`).join("\n")}
-`;
-
-    await alertEngine.sendCustomAlert('CUSTOM', message);
-  } catch (error) {
-    console.error('News alert failed:', error);
-  }
-}, {
-  timezone: 'Asia/Kolkata'
-});
 
 // Pre-market analysis (8:55 AM)
 cron.schedule('55 8 * * 1-5', async () => {

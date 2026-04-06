@@ -65,6 +65,8 @@ export interface BreakoutResult {
   breakout: boolean;
   price: number;
   timestamp: Date;
+  change: number;
+  confidence: number;
 }
 
 export type AlertType =

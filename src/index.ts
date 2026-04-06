@@ -11,23 +11,23 @@ import { getCronTimeline } from './services/scheduler.js';
 import { sendWhatsAppMessage } from './clients/twilioClient.js';
 import { runWarAnalysis } from "./services/warService.js";
 // import connectDB from './config/db.js';
-import { getMarketNews } from './clients/finnhubClient.js';
-
-import {
-  getPrices,
-  mapNewsToStocks,
-  STOCKS,
-  type MappedNews,
-  type NewsArticle,
-  type PriceInfo,
-  type StockInfo,
-} from './services/newsStockMapper.js';
 const app = express();
 
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  const allowedOrigins = new Set([
+    'https://market-signal-cmhb.vercel.app',
+  ]);
+
+  if (!origin) {
+    // Non-browser requests (curl, server-to-server) won't send an Origin header.
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else if (allowedOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+  res.setHeader('Vary', 'Origin');
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
     return;
@@ -50,8 +50,6 @@ app.get('/', (_req, res) => {
       root: 'GET /',
       health: 'GET /health',
       alertTest: 'GET /api/alert-test',
-      news: 'GET /api/news',
-      smartAlert: 'GET /api/smart-alert',
       warAlert: 'GET /api/war-alert',
       whatsappWebhook: 'POST /webhook/whatsapp',
       analyze: 'POST /analyze',
@@ -103,48 +101,7 @@ app.post("/webhook/whatsapp", async (req, res) => {
   let reply = "Welcome to MarketSignal 🚀";
 
   if (incomingMsg === "start" || incomingMsg === "hi") {
-    try {
-      // 🔥 1. Fetch news
-      const news = await getMarketNews();
-      const topNews = news.slice(0, 3);
-
-      const mapped = mapNewsToStocks(topNews, STOCKS);
-
-      // 🔥 2. Smart insights
-      const prices = await getPrices(STOCKS);
-
-      const insights = prices.map((stock) => {
-        const related = mapped.find(n => n.stock === stock.name);
-
-        return {
-          ...stock,
-          reason: related ? related.headline : "No major news",
-        };
-      });
-
-      // 🔥 3. War analysis
-      const war = await runWarAnalysis();
-
-      // 🔥 4. Build response
-      reply = `
-🚀 MarketSignal Activated
-
-📊 Smart Insights:
-${insights.map(s => `${s.name}: ${s.change ?? "NA"}%`).join("\n")}
-
-📰 News:
-${mapped.map(n => `${n.stock}: ${n.headline}`).join("\n")}
-
-🌍 War Status:
-${war.isWar ? "⚠️ Market impacted by global tensions" : "✅ No major war impact"}
-
-✅ Alerts started successfully!
-`;
-
-    } catch (err) {
-      console.error("Webhook error:", err);
-      reply = "❌ Failed to fetch market data";
-    }
+    reply = "✅ Alerts are enabled.";
   }
 
   res.set("Content-Type", "text/xml");
@@ -153,83 +110,6 @@ ${war.isWar ? "⚠️ Market impacted by global tensions" : "✅ No major war im
       <Message>${reply}</Message>
     </Response>
   `);
-});
-
-app.get('/api/news', async (req, res) => {
-  try {
-    const news = await getMarketNews();
-    const topNews: NewsArticle[] = (news as NewsArticle[]).slice(0, 3);
-
-    const mapped = mapNewsToStocks(topNews, STOCKS);
-
-    // ✅ use mapped data
-    const message = `
-📰 Smart Market News
-
-${mapped.map((n: MappedNews) => `${n.stock}: ${n.headline}`).join("\n")}
-`;
-
-    await sendWhatsAppMessage(message);
-
-    res.json({
-      ok: true,
-      mapped,
-    });
-
-  } catch (err: any) {
-    console.error('❌ Finnhub news error:', err);
-    res.status(500).json({
-      ok: false,
-      error: err?.message ?? 'Unknown error',
-    });
-  }
-});
-
-app.get("/api/smart-alert", async (req, res) => {
-  try {
-    const news = await getMarketNews();
-    const topNews: NewsArticle[] = (news as NewsArticle[]).slice(0, 5);
-
-    const mappedNews = mapNewsToStocks(topNews, STOCKS);
-    const prices = await getPrices(STOCKS);
-
-    // 🔥 combine
-    const insights = prices.map((stock: PriceInfo) => {
-      const relatedNews = mappedNews.find((n: MappedNews) => n.stock === stock.name);
-
-      let reason = "No major news";
-
-      if (relatedNews) {
-        reason = relatedNews.headline;
-      }
-
-      return {
-        ...stock,
-        reason,
-      };
-    });
-
-    // 🔥 format message
-    const message = `
-📊 Smart Market Insights
-
-${insights
-  .map(
-    (s: PriceInfo & { reason: string }) => `
-${s.name}: ${s.change !== null ? `${s.change >= 0 ? '🟢⬆️' : '🔴⬇️'} ${s.change.toFixed(2)}%` : '-'}
-📰 ${s.reason}
-`
-  )
-  .join("\n")}
-`;
-
-    await sendWhatsAppMessage(message);
-
-    res.json({ ok: true, insights });
-
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
 });
 
 // src/index.ts

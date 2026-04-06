@@ -1,6 +1,5 @@
 // src/services/warService.ts
 
-import { getMarketNews } from '../clients/finnhubClient.js';
 import { detectWarEvent, warScore, type NewsArticleLike } from './eventDetector.js';
 import { WAR_IMPACT } from './sectorImpact.js';
 import { getPrices, type PriceInfo } from './priceService.js';
@@ -18,9 +17,7 @@ export type WarResult =
     };
 
 export async function runWarAnalysis(): Promise<WarResult> {
-  const newsRaw = (await getMarketNews()) as unknown;
-  const news = (Array.isArray(newsRaw) ? newsRaw : []) as NewsArticleLike[];
-  const topNews = news.slice(0, 5);
+  const topNews: NewsArticleLike[] = [];
 
   const score = warScore(topNews);
 
