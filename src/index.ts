@@ -16,7 +16,7 @@ const app = express();
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = new Set([
-    'https://market-signal-cmhb.vercel.app',
+    'https://marketsignal-2d8t.onrender.com',
   ]);
 
   if (!origin) {
