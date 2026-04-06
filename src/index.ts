@@ -32,12 +32,14 @@ app.use(cors({
   credentials: true
 }));
 
+
+
 app.use((req, res, next) => {
   console.log("Origin:", req.headers.origin);
   next();
 });
 
-app.options("*", cors());
+
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 20, // limit each IP to 100 requests per windowMs
