@@ -1,19 +1,7 @@
+import { quoteBatch } from './yahooFinanceService.js';
+
 export type NewsArticle = {
   headline: string;
-};
-
-let yahooFinancePromise: Promise<typeof import('yahoo-finance2').default> | null = null;
-
-async function getYahooFinance() {
-  if (!yahooFinancePromise) {
-    yahooFinancePromise = import('yahoo-finance2').then((m) => m.default);
-  }
-  return yahooFinancePromise;
-}
-
-type YahooQuote = {
-  regularMarketPrice?: number;
-  regularMarketChangePercent?: number;
 };
 
 export type StockInfo = {
@@ -60,26 +48,24 @@ export function mapNewsToStocks(newsInput: NewsArticle[], stocksInput: StockInfo
 }
 
 export async function getPrices(stocksInput: StockInfo[]): Promise<PriceInfo[]> {
-  const results = await Promise.all(
-    stocksInput.map(async (stock) => {
-      try {
-        const yahooFinance = (await getYahooFinance()) as unknown as { quote: (s: string) => Promise<YahooQuote> };
-        const data = await yahooFinance.quote(stock.symbol);
+  try {
+    const symbols = stocksInput.map((s) => s.symbol);
+    const data = await quoteBatch(symbols);
 
-        return {
-          name: stock.name,
-          price: data.regularMarketPrice ?? null,
-          change: data.regularMarketChangePercent ?? null,
-        };
-      } catch {
-        return {
-          name: stock.name,
-          price: null,
-          change: null,
-        };
-      }
-    })
-  );
-
-  return results;
+    return stocksInput.map((stock, index) => {
+      const q = data[index];
+      return {
+        name: stock.name,
+        price: q?.regularMarketPrice ?? null,
+        change: q?.regularMarketChangePercent ?? null,
+      };
+    });
+  } catch (error) {
+    console.error('Batch fetch error:', error);
+    return stocksInput.map((stock) => ({
+      name: stock.name,
+      price: null,
+      change: null,
+    }));
+  }
 }

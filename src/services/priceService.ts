@@ -1,18 +1,4 @@
-let yahooFinancePromise: Promise<typeof import('yahoo-finance2').default> | null = null;
-
-async function getYahooFinance() {
-  if (!yahooFinancePromise) {
-    yahooFinancePromise = import('yahoo-finance2').then((m) => m.default);
-  }
-  return yahooFinancePromise;
-}
-
-type YahooQuote = {
-  symbol?: string;
-  regularMarketPrice?: number;
-  regularMarketChange?: number;
-  regularMarketChangePercent?: number;
-};
+import { getYahooFinance, quoteBatch, type YahooQuote } from './yahooFinanceService.js';
 
 export type SimpleStock = {
   name: string;
@@ -34,14 +20,15 @@ export type PriceInfo = {
 
 export async function getStockPrice(symbol: string): Promise<StockPrice | null> {
   try {
-    const yahooFinance = (await getYahooFinance()) as unknown as { quote: (s: string) => Promise<YahooQuote> };
+    const yahooFinance = await getYahooFinance();
     const data = await yahooFinance.quote(symbol);
+    const q = (Array.isArray(data) ? data[0] : data) as YahooQuote;
 
     return {
-      symbol: data.symbol,
-      price: data.regularMarketPrice,
-      change: data.regularMarketChange ?? undefined,
-      percent: data.regularMarketChangePercent ?? undefined,
+      symbol: q.symbol,
+      price: q.regularMarketPrice,
+      change: q.regularMarketChange ?? undefined,
+      percent: q.regularMarketChangePercent ?? undefined,
     };
   } catch (error) {
     console.error('Error fetching price:', error);
@@ -50,26 +37,24 @@ export async function getStockPrice(symbol: string): Promise<StockPrice | null> 
 }
 
 export async function getPrices(stocks: SimpleStock[]): Promise<PriceInfo[]> {
-  const results = await Promise.all(
-    stocks.map(async (stock) => {
-      try {
-        const yahooFinance = (await getYahooFinance()) as unknown as { quote: (s: string) => Promise<YahooQuote> };
-        const data = await yahooFinance.quote(stock.symbol);
+  try {
+    const symbols = stocks.map((s) => s.symbol);
+    const data = await quoteBatch(symbols);
 
-        return {
-          name: stock.name,
-          price: data.regularMarketPrice ?? null,
-          change: data.regularMarketChangePercent ?? null,
-        };
-      } catch {
-        return {
-          name: stock.name,
-          price: null,
-          change: null,
-        };
-      }
-    })
-  );
-
-  return results;
+    return stocks.map((stock, index) => {
+      const q = data[index];
+      return {
+        name: stock.name,
+        price: q?.regularMarketPrice ?? null,
+        change: q?.regularMarketChangePercent ?? null,
+      };
+    });
+  } catch (error) {
+    console.error('Batch fetch error:', error);
+    return stocks.map((stock) => ({
+      name: stock.name,
+      price: null,
+      change: null,
+    }));
+  }
 }
